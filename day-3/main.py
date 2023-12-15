@@ -2,7 +2,10 @@
 import argparse
 import logging
 import os
+import collections
 
+# Third library import
+import numpy as np
 
 def main():
     parser = argparse.ArgumentParser(prog="Advent of code 2023 - day 3",
@@ -14,11 +17,17 @@ def main():
     if not os.path.exists(args.filename):
         logging.error(f"File {args.filename} does not exist.")
 
-    total = 0
+    total_part_1 = 0
+
+    neigh_of_symbol_coordinates_dict = collections.defaultdict(lambda: [])
+    # This dictionary is defined as followed (for part 2 only):
+    #   - Keys are the coordinates (i,j) of the symbol
+    #   - Values are the part numbers that are neighbors of this symbol 
+    
     with open(args.filename, 'r') as f:
         lines = f.readlines()
-        number_start = -1
-        number_end = -1
+
+        number_start, number_end = -1, -1
         for line_idx, line in enumerate(lines):
             for character_idx, character in enumerate(line):
                 # Find number extremities
@@ -32,24 +41,32 @@ def main():
                         number_end = character_idx -1
 
                 if number_start != -1 and number_end != -1:
-                    # Validate if it is a 'part number'
-                    has_a_symbol_neighbor = False
                     neighbor_coordinates = _neighbors_coordinates(number_start, 
                                                                   number_end, 
                                                                   line_idx, 
                                                                   lines)
+                    
+                    is_part_number = False
+                    current_number = int(line[number_start:number_end + 1])
+
                     for neighbor_coordinates in neighbor_coordinates:
                         neighbor = lines[neighbor_coordinates[0]][neighbor_coordinates[1]]
                         if not neighbor.isdigit() and neighbor != '.':
-                            has_a_symbol_neighbor = True
-                            break
+                            # Part 1
+                            is_part_number = True
+                            # Part 2
+                            neigh_of_symbol_coordinates_dict[neighbor_coordinates].append(current_number)
 
-                    if has_a_symbol_neighbor:
-                        total += int(line[number_start:number_end + 1])
+                    if is_part_number:
+                        total_part_1 += current_number
 
                     # Reset number delimitors
                     number_start, number_end = -1, -1
-    print(total)
+    
+    total_part_2 = sum([np.prod(part_numbers) for part_numbers in neigh_of_symbol_coordinates_dict.values() 
+                                                   if len(part_numbers) == 2]) 
+    print(f"total_part_1:{total_part_1}")
+    print(f"total_part_2:{total_part_2}")
 
 
 def _neighbors_coordinates(number_start:int,

@@ -24,7 +24,7 @@ def main():
         lines = f.readlines()
         available_cubes = get_cubes(lines[0])
 
-    total = 0
+    total_part_1 = 0
     with open(args.games, 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -37,9 +37,11 @@ def main():
             for color, nb_cube in available_cubes.items():
                 if nb_cube < max_cubes_per_game[color]:
                     is_valid = False
+                    break
             if is_valid:
-                total += game_id
-    print(total)
+                total_part_1 += game_id
+
+    print(total_part_1)
 
 
 def get_cubes(concatenated_games: str):

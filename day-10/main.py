@@ -6,7 +6,7 @@ import os
 
 # Third party imports
 import networkx as nx
-
+import numpy as np
 
 def main():
     parser = argparse.ArgumentParser(prog="Advent of code 2023 - day 10",
@@ -18,42 +18,42 @@ def main():
         logging.error(f"File {args.filename} does not exist.")
 
     G = nx.Graph()
-    animal_coordinates = []
+    animal_coordinates = None
     pipes = {'|', '-', 'L', 'J', '7', 'F', 'S'}
-    possible_next_pipes = {0: {'|', 'L', 'J', 'S'},
-                           1: {'-', '7', 'J', 'S'}}
     coordinates_to_node_id = collections.defaultdict(lambda : len(coordinates_to_node_id))
     with open(args.filename, 'r') as f:
-        lines = f.readlines()
-        for i, line in enumerate(lines):
-            for j, current_char in enumerate(line.strip()):
+        lines = f.read().split()
+        char_matrix = np.matrix([list(line) for line in lines])
+        nb_line, nb_column = np.shape(char_matrix)
+        for i in range(nb_line):
+            for j in range(nb_column):
+                ij = (i,j)
+                current_char = char_matrix[ij]
                 if current_char == 'S':
-                    animal_coordinates = (i,j)
+                    animal_coordinates = ij
 
                 if not current_char in pipes:
                     continue
 
-                neighbors = _get_next_neighbors(current_char, 
-                                                (i, j), 
-                                                lines, 
-                                                possible_next_pipes)
+                neighbors = _get_next_neighbors(current_char, ij, char_matrix)
                 if not neighbors:
                     continue
 
                 for neighbor in neighbors:
-                    orig_node_id = coordinates_to_node_id[(i, j)]
-                    dest_node_id = coordinates_to_node_id[neighbor]
-                    G.add_edge(orig_node_id, dest_node_id)
+                    G.add_edge(ij, neighbor)
 
-    animal_node_id = coordinates_to_node_id[animal_coordinates]
-    paths = list(nx.shortest_path(G, animal_node_id).values())
+    paths = list(nx.shortest_path(G, animal_coordinates).values())
     print(len(paths[-1]) -1)
 
 
 def _get_next_neighbors(current_char : str,
                         ij : tuple[int],
-                        lines,
-                        possible_next_pipes)->list[tuple[int]]:
+                        char_matrix)->list[tuple[int]]:
+    
+    # 0 : Next vertical neighbor
+    # 1 : Next horizontal neighbor
+    possible_next_pipes = {0: {'|', 'L', 'J', 'S'},
+                           1: {'-', '7', 'J', 'S'}}
     next_neighbor_ij_list = [None, None]
     match current_char:
         case '|' | '7':
@@ -70,17 +70,24 @@ def _get_next_neighbors(current_char : str,
     for next_direction, next_neighbor_ij in enumerate(next_neighbor_ij_list):
         if not next_neighbor_ij:
             continue
-        if next_neighbor_ij[0] >= len(lines):
-            continue
-        if next_neighbor_ij[1] >= len(lines[0].strip()):
+        if _is_outside_matrix(next_neighbor_ij, char_matrix):
             continue
         
-        next_char = lines[next_neighbor_ij[0]][next_neighbor_ij[1]]
+        next_char = char_matrix[next_neighbor_ij]
         if next_char in possible_next_pipes[next_direction]:
             neighbors.append(next_neighbor_ij)
  
     return neighbors
     
+
+def _is_outside_matrix(ij, char_matrix):
+    i, j = ij
+    if i >= np.shape(char_matrix)[0]:
+        return True
+    if j >= np.shape(char_matrix)[1]:
+        return True
+    return False
+
 
 if __name__ == "__main__":
     main()

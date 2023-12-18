@@ -8,6 +8,7 @@ import os
 import networkx as nx
 import numpy as np
 
+
 def main():
     parser = argparse.ArgumentParser(prog="Advent of code 2023 - day 10",
                                      description="Check https://adventofcode.com/2023/day/10 \
@@ -20,7 +21,6 @@ def main():
     G = nx.Graph()
     animal_coordinates = None
     pipes = {'|', '-', 'L', 'J', '7', 'F', 'S'}
-    coordinates_to_node_id = collections.defaultdict(lambda : len(coordinates_to_node_id))
     with open(args.filename, 'r') as f:
         lines = f.read().split()
         char_matrix = np.matrix([list(line) for line in lines])
@@ -28,11 +28,18 @@ def main():
         for i in range(nb_line):
             for j in range(nb_column):
                 ij = (i,j)
+                G.add_node(ij)
                 current_char = char_matrix[ij]
                 if current_char == 'S':
                     animal_coordinates = ij
 
                 if not current_char in pipes:
+                    neighbors = [(i + 1, j), (i, j + 1)]
+                    for neighbor in neighbors:
+                        if not _is_outside_matrix(neighbor, char_matrix):
+                            next_char = lines[neighbor[0]][neighbor[1]]
+                            if next_char == '.':
+                                G.add_edge(ij, neighbor)
                     continue
 
                 neighbors = _get_next_neighbors(current_char, ij, char_matrix)
@@ -42,8 +49,20 @@ def main():
                 for neighbor in neighbors:
                     G.add_edge(ij, neighbor)
 
+    # Part 1
     paths = list(nx.shortest_path(G, animal_coordinates).values())
-    print(len(paths[-1]) -1)
+    print(f"total_part_1:{len(paths[-1]) -1}")
+    
+    # Part 2
+    animal_component = nx.node_connected_component(G, animal_coordinates)
+    components = [G.subgraph(c).copy() for c in nx.connected_components(G) 
+                    if not animal_coordinates in c]
+    total_part_2 = 0
+    nb_line = np.shape(char_matrix)[0]
+    for component in components:
+        if _is_inside_animal_component(animal_component, component, char_matrix):
+            total_part_2 += len(component.nodes)
+    print(f"total_part_2:{total_part_2}")
 
 
 def _get_next_neighbors(current_char : str,
@@ -87,6 +106,66 @@ def _is_outside_matrix(ij, char_matrix):
     if j >= np.shape(char_matrix)[1]:
         return True
     return False
+
+
+def _is_inside_animal_component(animal_component,
+                                component,
+                                char_matrix):
+    '''
+    Validate if a component is inside or outside the matrix by counting the horizontal
+    lines that must crossed when going vertically from one element of the component to  
+    the outside of the animal component. A point is considered inside a polygon if the
+    generated line crosses an odd number of sides.
+    '''
+    nb_line = np.shape(char_matrix)[0]
+    # 1 - Do the validation only for one element of the component
+    first_ij = next(iter(component))
+    check_below = True
+    if first_ij[0] == nb_line - 1:
+        check_below = False
+
+    # 2 - Get horizontal characters either below or above the current element
+    i_range = range(first_ij[0], nb_line) if check_below else range(0, first_ij[0])
+    nb_horizontal_edge = 0
+    horizontal_chars = []
+    for i in i_range:
+        ij = (i, first_ij[1])
+        if not ij in animal_component:
+            continue
+        
+        current_char = char_matrix[ij]
+        match current_char:
+            case '7' | 'J' | 'F' | 'L' | '-':
+                horizontal_chars.append(current_char)
+            case 'S':
+                # TODO : Not hard-code that
+                horizontal_chars.append('J')
+
+    # 3 - Count only '-' or horizontal lines that must absolutely be crossed.
+    #     In the first example, the dot could be considered slighly on the left of the 
+    #     vertical line and the horizontal lines can then be ignored or slightly on the
+    #     right and there will be two horizontal lines.               
+    #     In the second example, the bottom horizontal line must absolutely be crossed
+    #     even if the dot is slighly on the left of the "F". Same reasoning can be 
+    #     applied if it's slight on the right but with the top horizontal line. Thus, 
+    #     only one horizontal will be taken into account,
+    #                             .                .
+    #                             F                F
+    #                             |                |   
+    #                             L                J
+    while len(horizontal_chars):
+        if (horizontal_chars[-1] == '-'):
+            horizontal_chars.pop()
+            nb_horizontal_edge += 1
+        else:
+            second_to_last_element = horizontal_chars.pop()
+            last_element = horizontal_chars.pop()
+            # 0: Left, 1: Right
+            horizontal_line_side_dict = {'7' : 0, 'J' : 0, 'F' : 1, 'L' : 1}
+            if (horizontal_line_side_dict[last_element] + horizontal_line_side_dict[second_to_last_element]) % 2:
+                nb_horizontal_edge +=1 
+
+    return nb_horizontal_edge % 2 
 
 
 if __name__ == "__main__":

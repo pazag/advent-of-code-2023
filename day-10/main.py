@@ -120,15 +120,13 @@ def _is_inside_animal_component(animal_component,
     nb_line = np.shape(char_matrix)[0]
     # 1 - Do the validation only for one element of the component
     first_ij = next(iter(component))
-    check_below = True
-    if first_ij[0] == nb_line - 1:
-        check_below = False
+    if first_ij[0] == 0 or first_ij[0] == nb_line - 1:
+        return False
 
-    # 2 - Get horizontal characters either below or above the current element
-    i_range = range(first_ij[0], nb_line) if check_below else range(0, first_ij[0])
+    # 2 - Get horizontal characters below the current element
     nb_horizontal_edge = 0
     horizontal_chars = []
-    for i in i_range:
+    for i in range(first_ij[0] + 1, nb_line):
         ij = (i, first_ij[1])
         if not ij in animal_component:
             continue
@@ -143,12 +141,12 @@ def _is_inside_animal_component(animal_component,
 
     # 3 - Count only '-' or horizontal lines that must absolutely be crossed.
     #     In the first example, the dot could be considered slighly on the left of the 
-    #     vertical line and the horizontal lines can then be ignored or slightly on the
-    #     right and there will be two horizontal lines.               
-    #     In the second example, the bottom horizontal line must absolutely be crossed
-    #     even if the dot is slighly on the left of the "F". Same reasoning can be 
-    #     applied if it's slight on the right but with the top horizontal line. Thus, 
-    #     only one horizontal will be taken into account,
+    #     vertical line and the horizontal lines could then be ignored or slightly on the
+    #     right and there would be two horizontal lines, that would be ignored below.               
+    #     In the second example, one horizontal line must absolutely be crossed in any case.
+    #     If the dot is slighly on the left of the vertical line, the horizontal line of the 'J' 
+    #     must be crossed. If it's slightly on the right, the horizontal line of the 'F' will  
+    #     be crossed.
     #                             .                .
     #                             F                F
     #                             |                |   
@@ -158,8 +156,8 @@ def _is_inside_animal_component(animal_component,
             horizontal_chars.pop()
             nb_horizontal_edge += 1
         else:
-            second_to_last_element = horizontal_chars.pop()
             last_element = horizontal_chars.pop()
+            second_to_last_element = horizontal_chars.pop()
             # 0: Left, 1: Right
             horizontal_line_side_dict = {'7' : 0, 'J' : 0, 'F' : 1, 'L' : 1}
             if (horizontal_line_side_dict[last_element] + horizontal_line_side_dict[second_to_last_element]) % 2:

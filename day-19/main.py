@@ -40,7 +40,15 @@ def main():
         for part_rating in part_ratings:
             if part_rating_is_valid(root_node, part_rating):
                 total_part_1 += sum(part_rating.values())
-        print(total_part_1)
+        print(f"total_part_1:{total_part_1}")
+
+        # Part 2
+        total_part_2 = 0
+        all_paths_in_tree = all_paths(root_node)
+        valid_paths = [path for path in all_paths_in_tree if path[-1] == 'A']
+        for path in valid_paths:
+            total_part_2 += nb_distinct_combinations(path)
+        print(f"total_part_2:{total_part_2}")
 
 
 class TreeNode:
@@ -50,6 +58,38 @@ class TreeNode:
         self.right = None
     def __str__(self):
         return f"{self.data}"
+
+
+def all_paths(root : TreeNode):
+    def revert_condition(condition):
+        if condition == 'R' or condition == 'A':
+            return condition
+        elif condition[1] == '<':
+            return f'{condition[0]}>{int(condition[2:]) - 1}'
+        else:
+            return f'{condition[0]}<{int(condition[2:]) + 1}'
+    
+    def dfs(node, current_path, all_paths_list):
+        if not node:
+            return
+
+        current_path.append(node.data)
+
+        if not node.left and not node.right:
+            # Leaf node, add the current path to the result
+            all_paths_list.append(list(current_path))
+        else:
+            # Recursively traverse left and right subtrees
+            dfs(node.left, current_path, all_paths_list)
+            current_path[-1] = revert_condition(current_path[-1])
+            dfs(node.right, current_path, all_paths_list)
+
+        # Backtrack: remove the current node from the current path
+        current_path.pop()
+
+    all_paths_list = []
+    dfs(root, [], all_paths_list)
+    return all_paths_list
 
 
 def build_tree_from_input(workflows_dict):
@@ -70,8 +110,29 @@ def build_tree_from_input(workflows_dict):
     # Build binary tree
     root_node = build_tree_helper(workflows_dict, workflows_dict['in'])
     return root_node
+   
 
+def nb_distinct_combinations(path):
+    categories = {'x', 'm', 'a', 's'}
+    bounds_per_category = {}
+    for category in categories:
+        bounds_per_category[category] = {'>' : 0, '<' : 4001}
+
+    for bound in path[:-1]:
+        char = bound[0]
+        op = bound[1]
+        if op == '<':
+            bounds_per_category[char][op] = min(bounds_per_category[char][op], int(bound[2:]))
+        else:
+            bounds_per_category[char][op] = max(bounds_per_category[char][op], int(bound[2:]))
     
+    nb_distinct_combinations = 1
+    for bound in bounds_per_category.values():
+        nb_distinct_combinations *= (bound['<'] - 1 - bound['>'])
+
+    return nb_distinct_combinations 
+
+
 def part_rating_is_valid(root, part_rating):
     stack = [root]
     while stack:
